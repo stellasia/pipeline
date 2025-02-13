@@ -7,7 +7,10 @@ async def main(show_task_progress: bool = True):
     """Consumes the streaming response from the server.
     """
     client = httpx.AsyncClient()
-    async with client.stream('GET', 'http://localhost:8000/', params={"show_task_progress": show_task_progress}) as response:
+    async with client.stream('GET', 'http://localhost:8000/', params={
+        "show_task_progress": show_task_progress,
+        "input_text": "here is my question: ...",
+    }) as response:
         async for chunk in response.aiter_bytes():
             # print(chunk)
             print(json.loads(chunk.decode()))

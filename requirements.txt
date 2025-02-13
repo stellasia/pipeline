@@ -1,3 +1,4 @@
 FastAPI
 httpx
 uvicorn
+neo4j-graphrag

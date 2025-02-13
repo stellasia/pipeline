@@ -5,27 +5,34 @@ from typing import Any, AsyncGenerator
 
 class Task:
     """Pipeline task"""
-    def __init__(self, name: str, batch_size: int = 5) -> None:
+    def __init__(self, name: str, batch_size: int = 5, sleep_time: int = 2) -> None:
         self.name = name
         self.batch_size = batch_size
+        self.sleep_time = sleep_time
 
     async def run(self, data: dict[str, Any]) -> Any:
         return data
 
-    async def process_batch(self, data: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return data
+    async def process_batch(self, data: list[dict[str, Any]], iteration: int) -> dict[str, Any]:
+        return {"result": data, "iteration": iteration}
 
     async def step(self, data: list[dict[str, Any]]) -> AsyncGenerator[Any, None]:
         """For illustration purposes, process batches from input data. Yield result
         for each batch.
         """
         num_iterations = (len(data) - 1) // self.batch_size + 1
+        batch_tasks = []
         for iteration in range(num_iterations):
             prev_index = iteration * self.batch_size
             next_index = (iteration + 1) * self.batch_size
             sub_data = data[prev_index:next_index]
-            batch_result = await self.process_batch(sub_data)
-            yield {"type": "intermediate", "iteration": iteration, "num_iterations": num_iterations, "result": batch_result}
+            # batch_result = await self.process_batch(sub_data)
+            batch_tasks.append(self.process_batch(sub_data, iteration))
+
+        for f in asyncio.as_completed(batch_tasks):
+            batch_result = await f
+            yield {"type": "intermediate", "num_iterations": num_iterations, **batch_result}
+            await asyncio.sleep(self.sleep_time)
         yield {"type": "final", "result": data}
 
 
@@ -65,8 +72,8 @@ class Pipeline:
 
 def get_pipeline() -> Pipeline:
     tasks = [
-        Task("task1"),
-        Task("task2"),
+        Task("task1", sleep_time=3),
+        Task("task2", sleep_time=1),
     ]
     pipeline = Pipeline(tasks)
     return pipeline
